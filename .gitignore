@@ -4,5 +4,6 @@ dist
 logs/
 coverage/
 *.log
+*.tsbuildinfo
 apps/api/public/
 planing_path
