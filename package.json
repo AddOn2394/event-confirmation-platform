@@ -16,5 +16,12 @@
     "url": "git+https://github.com/AddOn2394/event-confirmation-platform.git"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.3",
+    "typescript-eslint": "^8.59.4"
+  }
 }
