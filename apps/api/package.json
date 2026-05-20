@@ -1,0 +1,14 @@
+{
+  "name": "@ecp/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "migrate": "tsx src/db/migrate.ts",
+    "seed": "tsx src/db/seed.ts",
+    "test": "vitest run"
+  },
+  "license": "ISC"
+}

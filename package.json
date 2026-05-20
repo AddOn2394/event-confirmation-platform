@@ -1,0 +1,20 @@
+{
+  "name": "event-confirmation-platform",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=apps/web && npm run build --workspace=apps/api",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AddOn2394/event-confirmation-platform.git"
+  },
+  "author": "",
+  "license": "ISC"
+}
