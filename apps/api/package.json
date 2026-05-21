@@ -9,7 +9,9 @@
     "typecheck": "tsc --noEmit",
     "migrate": "tsx src/db/migrate.ts",
     "seed": "tsx src/db/seed.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "invitations:send": "tsx scripts/send-invitations.ts",
+    "k6:tokens": "tsx scripts/generate-tokens.ts"
   },
   "license": "ISC",
   "dependencies": {

@@ -9,7 +9,12 @@
     "skipLibCheck": true,
     "moduleDetection": "force",
     "allowImportingTsExtensions": true,
-    "noEmit": true
+    "noEmit": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src/**/*", "vite.config.ts", "index.html"]
 }
