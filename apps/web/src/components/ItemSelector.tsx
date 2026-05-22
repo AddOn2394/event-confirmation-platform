@@ -7,8 +7,8 @@ interface ItemSelectorProps {
   items: Item[];
   value: string[];
   onChange: (ids: string[]) => void;
-  disabled?: boolean;
-  query?: string;
+  disabled: boolean;
+  query: string;
 }
 
 function normalize(s: string): string {

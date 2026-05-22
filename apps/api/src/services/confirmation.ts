@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { pool, withTx } from '../db/pool';
+import { withTx } from '../db/pool';
 import { computeDiscount } from '@ecp/shared';
 import type { Item } from '@ecp/shared';
 import type { ConfirmationBody } from '@ecp/shared';
@@ -191,13 +191,11 @@ export async function createConfirmation(
       });
     }
 
-    // INSERT en outbox (mismo COMMIT — atomicidad garantizada)
-    const client = await pool.connect();
+    // Insert outbox row in same transaction — atomicity guaranteed
     const clientData = await tx.query<{ first_name: string; last_name: string }>(
       `SELECT first_name, last_name FROM client WHERE id = $1`,
       [auth.client_id]
     );
-    client.release();
 
     const payload = {
       confirmation_id: confirmation.id,

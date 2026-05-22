@@ -4,7 +4,7 @@ import { CheckCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { ConfirmationDetail, type ConfirmationDetailData } from '@/components/ConfirmationDetail';
-import { apiGet, ApiError } from '@/lib/api';
+import { apiGet } from '@/lib/api';
 
 interface PageData {
   client: {
@@ -41,13 +41,7 @@ export function Success() {
         }
         setData({ client: res.client, existing_confirmation: res.existing_confirmation });
       })
-      .catch((err) => {
-        if (err instanceof ApiError) {
-          navigate('/confirm/invalid', { replace: true });
-        } else {
-          navigate('/confirm/invalid', { replace: true });
-        }
-      })
+      .catch(() => navigate('/confirm/invalid', { replace: true }))
       .finally(() => setLoading(false));
   }, [token, navigate]);
 

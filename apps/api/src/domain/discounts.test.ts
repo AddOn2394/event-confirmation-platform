@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeDiscount } from '../../../../packages/shared/src/domain/discounts';
-import type { Item } from '../../../../packages/shared/src/schemas/discount';
+import { computeDiscount, type Item } from '@ecp/shared';
 
 // Helpers para construir items de test sin repetir boilerplate
 const svc = (price: number, id = Math.random().toString()): Item => ({

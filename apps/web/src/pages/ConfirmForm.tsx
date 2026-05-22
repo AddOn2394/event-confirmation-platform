@@ -108,13 +108,7 @@ export function ConfirmForm() {
         if (res.client.document_number) setValue('document_number', res.client.document_number);
         if (res.slots.length > 0) setValue('slot_id', res.slots[0].id);
       })
-      .catch((err) => {
-        if (err instanceof ApiError && err.status === 401) {
-          navigate('/confirm/invalid', { replace: true });
-        } else {
-          navigate('/confirm/invalid', { replace: true });
-        }
-      })
+      .catch(() => navigate('/confirm/invalid', { replace: true }))
       .finally(() => setLoading(false));
   }, [token, navigate, setValue]);
 
@@ -126,7 +120,7 @@ export function ConfirmForm() {
       if (err instanceof ApiError) {
         if (err.status === 410) {
           navigate('/confirm/full', { replace: true });
-        } else if (err.status === 409 || err.status === 200) {
+        } else if (err.status === 409) {
           navigate(`/confirm/already?token=${token}`, { replace: true });
         } else if (err.status === 401) {
           navigate('/confirm/invalid', { replace: true });

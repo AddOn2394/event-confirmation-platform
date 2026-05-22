@@ -4,7 +4,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL es requerida'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres'),
   ADMIN_TOKEN: z.string().min(32, 'ADMIN_TOKEN debe tener al menos 32 caracteres'),
-  EVENT_CAPACITY: z.coerce.number().int().min(1).max(10000),
+  EVENT_CAPACITY: z.coerce.number().int().min(1).max(10000).default(50),
   EVENT_ID: z.string().uuid('EVENT_ID debe ser un UUID válido'),
   INVITATION_BASE_URL: z.string().url('INVITATION_BASE_URL debe ser una URL válida'),
   CONTACT_EMAIL: z.string().email('CONTACT_EMAIL debe ser un email válido'),
