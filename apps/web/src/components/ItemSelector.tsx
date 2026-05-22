@@ -2,6 +2,7 @@ import type { Item } from '@ecp/shared';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { cn, formatGTQ } from '@/lib/utils';
+import { partitionByType } from '@/lib/items';
 
 interface ItemSelectorProps {
   items: Item[];
@@ -80,15 +81,13 @@ export function ItemSelector({ items, value, onChange, disabled, query }: ItemSe
   const selected = new Set(value);
   const q = query ? normalize(query) : '';
 
-  // Un item es visible si está seleccionado o coincide con el query
   function isVisible(item: Item): boolean {
     if (selected.has(item.id)) return true;
     if (!q) return true;
     return normalize(item.name).includes(q);
   }
 
-  const services = items.filter((i) => i.type === 'servicio' && isVisible(i));
-  const products = items.filter((i) => i.type === 'producto' && isVisible(i));
+  const { services, products } = partitionByType(items.filter(isVisible));
 
   function toggle(id: string) {
     const next = new Set(selected);

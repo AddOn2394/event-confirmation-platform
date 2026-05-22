@@ -15,17 +15,18 @@ router.post('/', requireMagicLink, async (req, res) => {
   }
 
   try {
-    const { status, data } = await createConfirmation(parsed.data, req.auth!);
+    const result = await createConfirmation(parsed.data, req.auth!);
 
-    if (status === 410) {
+    if (result.kind === 'full') {
       res.status(410).json({ error: 'event_full' });
       return;
     }
 
-    res.status(status).json(data);
+    const statusCode = result.kind === 'created' ? 201 : 200;
+    res.status(statusCode).json(result.confirmation);
 
-    // Drain asíncrono tras el COMMIT — no bloquea la respuesta
-    if (status === 201) {
+    // Async drain after COMMIT — does not block the response
+    if (result.kind === 'created') {
       setImmediate(() => drainOutbox().catch((e) => logger.error('outbox drain error', e)));
     }
   } catch (err) {

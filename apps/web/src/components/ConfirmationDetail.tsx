@@ -1,31 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatGTQ } from '@/lib/utils';
+import { partitionConfirmationItems } from '@/lib/items';
+import type { Client, ConfirmationDetail as ConfirmationDetailType } from '@/types/confirmation';
 
-interface ConfirmationItem {
-  item_id: string;
-  name: string;
-  type: 'servicio' | 'producto';
-  price_at_confirmation: number;
-}
-
-export interface ConfirmationDetailData {
-  id: string;
-  created_at: string;
-  slot: { id: string; label: string; starts_at: string; ends_at: string } | null;
-  items: ConfirmationItem[];
-  discount_services: number;
-  discount_products: number;
-  final_total: number;
-}
+export type { ConfirmationDetail as ConfirmationDetailData } from '@/types/confirmation';
 
 interface ConfirmationDetailProps {
-  client: {
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone: string | null;
-  };
-  confirmation: ConfirmationDetailData;
+  client: Client;
+  confirmation: ConfirmationDetailType;
 }
 
 const dateFormatter = new Intl.DateTimeFormat('es-GT', {
@@ -42,15 +24,11 @@ function formatDate(iso: string): string {
 }
 
 export function ConfirmationDetail({ client, confirmation }: ConfirmationDetailProps) {
-  const { slot, items, discount_services, discount_products, final_total, created_at } =
-    confirmation;
-
-  const servicios = items.filter((i) => i.type === 'servicio');
-  const productos = items.filter((i) => i.type === 'producto');
+  const { slot, items, discount_services, discount_products, final_total, created_at } = confirmation;
+  const { services, products } = partitionConfirmationItems(items);
 
   return (
     <div className="space-y-4">
-      {/* Cliente */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Datos del asistente</CardTitle>
@@ -58,9 +36,7 @@ export function ConfirmationDetail({ client, confirmation }: ConfirmationDetailP
         <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
           <div>
             <p className="text-xs text-muted-foreground">Nombre</p>
-            <p className="font-medium">
-              {client.first_name} {client.last_name}
-            </p>
+            <p className="font-medium">{client.first_name} {client.last_name}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Correo</p>
@@ -75,7 +51,6 @@ export function ConfirmationDetail({ client, confirmation }: ConfirmationDetailP
         </CardContent>
       </Card>
 
-      {/* Horario */}
       {slot && (
         <Card>
           <CardHeader>
@@ -87,23 +62,19 @@ export function ConfirmationDetail({ client, confirmation }: ConfirmationDetailP
         </Card>
       )}
 
-      {/* Items + descuentos + total */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Detalle de compra</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {servicios.length > 0 && (
+          {services.length > 0 && (
             <div>
               <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Servicios
               </h4>
               <div className="divide-y rounded-md border">
-                {servicios.map((item) => (
-                  <div
-                    key={item.item_id}
-                    className="flex items-center justify-between px-3 py-2 text-sm"
-                  >
+                {services.map((item) => (
+                  <div key={item.item_id} className="flex items-center justify-between px-3 py-2 text-sm">
                     <span>{item.name}</span>
                     <span className="font-medium">{formatGTQ(item.price_at_confirmation)}</span>
                   </div>
@@ -117,17 +88,14 @@ export function ConfirmationDetail({ client, confirmation }: ConfirmationDetailP
             </div>
           )}
 
-          {productos.length > 0 && (
+          {products.length > 0 && (
             <div>
               <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Productos
               </h4>
               <div className="divide-y rounded-md border">
-                {productos.map((item) => (
-                  <div
-                    key={item.item_id}
-                    className="flex items-center justify-between px-3 py-2 text-sm"
-                  >
+                {products.map((item) => (
+                  <div key={item.item_id} className="flex items-center justify-between px-3 py-2 text-sm">
                     <span>{item.name}</span>
                     <span className="font-medium">{formatGTQ(item.price_at_confirmation)}</span>
                   </div>

@@ -1,64 +1,21 @@
-import { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { CalendarCheck } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { useExistingConfirmation } from '@/hooks/useExistingConfirmation';
+import { useContact } from '@/contexts/ContactContext';
+import { ConfirmationDetail } from '@/components/ConfirmationDetail';
+import { ConfirmationPageSkeleton } from '@/components/ConfirmationPageSkeleton';
 import { Button } from '@/components/ui/button';
-import { ConfirmationDetail, type ConfirmationDetailData } from '@/components/ConfirmationDetail';
-import { apiGet } from '@/lib/api';
-
-const SALES_EMAIL = 'ventas@feria-promociones.example';
-const SALES_PHONE = '+50250000000';
-
-interface PageData {
-  client: {
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone: string | null;
-  };
-  existing_confirmation: ConfirmationDetailData;
-}
 
 export function AlreadyConfirmed() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const token = searchParams.get('token') ?? '';
-
-  const [data, setData] = useState<PageData | null>(null);
-  const [loading, setLoading] = useState(true);
   usePageMeta('Ya confirmaste tu asistencia', 'Tu asistencia a la Feria de Promociones 2026 ya está registrada.');
 
-  useEffect(() => {
-    if (!token) {
-      navigate('/confirm/invalid', { replace: true });
-      return;
-    }
+  const { data, loading } = useExistingConfirmation(token);
+  const contact = useContact();
 
-    apiGet<{ client: PageData['client']; existing_confirmation: ConfirmationDetailData | null }>(
-      `/api/event/${token}/confirmation`
-    )
-      .then((res) => {
-        if (!res.existing_confirmation) {
-          navigate('/confirm/invalid', { replace: true });
-          return;
-        }
-        setData({ client: res.client, existing_confirmation: res.existing_confirmation });
-      })
-      .catch(() => navigate('/confirm/invalid', { replace: true }))
-      .finally(() => setLoading(false));
-  }, [token, navigate]);
-
-  if (loading) {
-    return (
-      <div className="mx-auto max-w-lg px-4 py-16 space-y-4">
-        <Skeleton className="h-10 w-48 mx-auto" />
-        <Skeleton className="h-40 rounded-lg" />
-        <Skeleton className="h-40 rounded-lg" />
-      </div>
-    );
-  }
-
+  if (loading) return <ConfirmationPageSkeleton />;
   if (!data) return null;
 
   return (
@@ -73,18 +30,29 @@ export function AlreadyConfirmed() {
 
       <ConfirmationDetail client={data.client} confirmation={data.existing_confirmation} />
 
-      {/* CTA contacto */}
-      <div className="mt-8 rounded-lg border p-5 text-center">
-        <p className="mb-4 text-sm font-medium">¿Necesitas hacer cambios? Contacta a ventas</p>
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-          <Button variant="outline" asChild>
-            <a href={`mailto:${SALES_EMAIL}`}>Enviar correo</a>
-          </Button>
-          <Button variant="outline" asChild>
-            <a href={`tel:${SALES_PHONE}`}>Llamar</a>
-          </Button>
+      {contact && (
+        <div className="mt-8 rounded-lg border p-5 text-center">
+          <p className="mb-4 text-sm font-medium">¿Necesitas hacer cambios? Contacta a ventas</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Button variant="outline" asChild>
+              <a
+                href={`mailto:${contact.contact_email}`}
+                aria-label={`Enviar correo a ${contact.contact_email}`}
+              >
+                Enviar correo
+              </a>
+            </Button>
+            <Button variant="outline" asChild>
+              <a
+                href={`tel:${contact.contact_phone}`}
+                aria-label={`Llamar a ${contact.contact_phone}`}
+              >
+                Llamar
+              </a>
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

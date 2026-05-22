@@ -1,5 +1,8 @@
-import { Pool, PoolClient } from 'pg';
+import { Pool, PoolClient, types } from 'pg';
 import { env } from '../config/env';
+
+// Parse NUMERIC columns as JS numbers instead of strings
+types.setTypeParser(1700, parseFloat);
 
 export const pool = new Pool({
   connectionString: env.DATABASE_URL,

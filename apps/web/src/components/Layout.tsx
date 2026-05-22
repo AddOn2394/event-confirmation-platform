@@ -1,21 +1,8 @@
-import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { apiGet } from '@/lib/api';
-
-interface SiteConfig {
-  contact_email: string;
-  contact_phone: string;
-  contact_hours: string;
-}
+import { useContact } from '@/contexts/ContactContext';
 
 export function Layout() {
-  const [config, setConfig] = useState<SiteConfig | null>(null);
-
-  useEffect(() => {
-    apiGet<SiteConfig>('/api/config')
-      .then(setConfig)
-      .catch(() => null);
-  }, []);
+  const contact = useContact();
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -34,13 +21,13 @@ export function Layout() {
 
       <footer className="border-t bg-card py-6">
         <div className="mx-auto max-w-5xl px-4 text-center text-sm text-muted-foreground">
-          {config ? (
+          {contact ? (
             <p>
               ¿Preguntas? Escríbenos a{' '}
-              <a href={`mailto:${config.contact_email}`} className="underline hover:text-foreground">
-                {config.contact_email}
+              <a href={`mailto:${contact.contact_email}`} className="underline hover:text-foreground">
+                {contact.contact_email}
               </a>{' '}
-              · {config.contact_phone} · {config.contact_hours}
+              · {contact.contact_phone} · {contact.contact_hours}
             </p>
           ) : (
             <p>Feria de Promociones 2026</p>

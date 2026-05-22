@@ -16,26 +16,10 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-
-interface EventSlot {
-  id: string;
-  label: string;
-  starts_at: string;
-  ends_at: string;
-}
-
-interface ClientData {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  phone: string | null;
-  document_type: string | null;
-  document_number: string | null;
-}
+import type { Client, EventSlot } from '@/types/confirmation';
 
 interface ConfirmationData {
-  client: ClientData;
+  client: Client;
   event: { id: string; name: string; capacity: number; confirmed_count: number } | null;
   slots: EventSlot[];
   items: Item[];

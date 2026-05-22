@@ -5,6 +5,91 @@ import type { Item } from '@ecp/shared';
 import type { ConfirmationBody } from '@ecp/shared';
 import type { MagicLinkPayload } from './auth';
 
+export interface ConfirmationItem {
+  item_id: string;
+  name: string;
+  type: 'servicio' | 'producto';
+  price_at_confirmation: number;
+}
+
+export interface ConfirmationDetail {
+  id: string;
+  created_at: string;
+  slot: { id: string; label: string; starts_at: string; ends_at: string } | null;
+  items: ConfirmationItem[];
+  discount_services: number;
+  discount_products: number;
+  final_total: number;
+}
+
+// Kept for backward-compat with confirm route that uses was_existing flag
+export interface ConfirmationResult extends ConfirmationDetail {
+  was_existing: boolean;
+}
+
+function computeFinalTotal(items: ConfirmationItem[], discountServices: number, discountProducts: number): number {
+  const servicesTotal = items
+    .filter((i) => i.type === 'servicio')
+    .reduce((sum, i) => sum + i.price_at_confirmation, 0);
+  const productsTotal = items
+    .filter((i) => i.type === 'producto')
+    .reduce((sum, i) => sum + i.price_at_confirmation, 0);
+  return servicesTotal * (1 - discountServices) + productsTotal * (1 - discountProducts);
+}
+
+export async function loadConfirmationDetail(
+  executor: PoolClient,
+  confirmationId: string
+): Promise<ConfirmationDetail> {
+  const [confRow, slotRow, itemRows] = await Promise.all([
+    executor.query<{
+      id: string;
+      created_at: string;
+      discount_services: number;
+      discount_products: number;
+      slot_id: string;
+    }>(
+      `SELECT id, created_at, discount_services, discount_products, slot_id
+         FROM confirmation WHERE id = $1`,
+      [confirmationId]
+    ),
+    executor.query<{ id: string; label: string; starts_at: string; ends_at: string }>(
+      `SELECT es.id, es.label, es.starts_at, es.ends_at
+         FROM confirmation c
+         JOIN event_slot es ON es.id = c.slot_id
+        WHERE c.id = $1`,
+      [confirmationId]
+    ),
+    executor.query<{
+      item_id: string;
+      name: string;
+      type: 'servicio' | 'producto';
+      price_at_confirmation: number;
+    }>(
+      `SELECT ci.item_id, i.name, i.type, ci.price_at_confirmation
+         FROM confirmation_item ci
+         JOIN item i ON i.id = ci.item_id
+        WHERE ci.confirmation_id = $1`,
+      [confirmationId]
+    ),
+  ]);
+
+  const conf = confRow.rows[0];
+  const discountServices = conf.discount_services;
+  const discountProducts = conf.discount_products;
+  const items = itemRows.rows as ConfirmationItem[];
+
+  return {
+    id: conf.id,
+    created_at: conf.created_at,
+    slot: slotRow.rows[0] ?? null,
+    items,
+    discount_services: discountServices,
+    discount_products: discountProducts,
+    final_total: computeFinalTotal(items, discountServices, discountProducts),
+  };
+}
+
 interface ReserveSeatOk {
   ok: true;
   count: number;
@@ -13,15 +98,11 @@ interface ReserveSeatOk {
 
 interface ReserveSeatFull {
   ok: false;
-  reason: 'full';
 }
 
 type ReserveSeatResult = ReserveSeatOk | ReserveSeatFull;
 
-export async function reserveSeat(
-  eventId: string,
-  tx: PoolClient
-): Promise<ReserveSeatResult> {
+export async function reserveSeat(eventId: string, tx: PoolClient): Promise<ReserveSeatResult> {
   const result = await tx.query<{ confirmed_count: number; capacity: number }>(
     `UPDATE event
         SET confirmed_count = confirmed_count + 1
@@ -32,115 +113,41 @@ export async function reserveSeat(
   );
 
   if (!result.rowCount || result.rowCount === 0) {
-    return { ok: false, reason: 'full' };
+    return { ok: false };
   }
 
-  return {
-    ok: true,
-    count: result.rows[0].confirmed_count,
-    capacity: result.rows[0].capacity,
-  };
+  return { ok: true, count: result.rows[0].confirmed_count, capacity: result.rows[0].capacity };
 }
 
-export interface ConfirmationResult {
-  id: string;
-  created_at: string;
-  was_existing: boolean;
-  discount_services: number;
-  discount_products: number;
-  final_total: number;
-  items: Array<{ item_id: string; name: string; type: string; price_at_confirmation: number }>;
-}
+export type CreateConfirmationResult =
+  | { kind: 'created'; confirmation: ConfirmationDetail }
+  | { kind: 'existed'; confirmation: ConfirmationDetail }
+  | { kind: 'full' };
 
 export async function createConfirmation(
   body: ConfirmationBody,
   auth: MagicLinkPayload
-): Promise<{ status: 201 | 200 | 410; data: ConfirmationResult }> {
+): Promise<CreateConfirmationResult> {
   return withTx(async (tx) => {
-    // Verificar si ya existe confirmación (idempotencia)
-    const existing = await tx.query<{
-      id: string;
-      created_at: string;
-      discount_services: string;
-      discount_products: string;
-    }>(
-      `SELECT id, created_at, discount_services, discount_products
-         FROM confirmation
-        WHERE event_id = $1 AND email = $2`,
+    // Check idempotency: confirmation already exists for this event + email
+    const existing = await tx.query<{ id: string }>(
+      `SELECT id FROM confirmation WHERE event_id = $1 AND email = $2`,
       [auth.event_id, auth.email]
     );
 
     if (existing.rowCount && existing.rowCount > 0) {
-      const row = existing.rows[0];
-      const confItems = await tx.query<{
-        item_id: string;
-        name: string;
-        type: string;
-        price_at_confirmation: string;
-      }>(
-        `SELECT ci.item_id, i.name, i.type, ci.price_at_confirmation
-           FROM confirmation_item ci
-           JOIN item i ON i.id = ci.item_id
-          WHERE ci.confirmation_id = $1`,
-        [row.id]
-      );
-
-      const discSvc = parseFloat(row.discount_services);
-      const discPrd = parseFloat(row.discount_products);
-      const items = confItems.rows.map((r) => ({
-        item_id: r.item_id,
-        name: r.name,
-        type: r.type,
-        price_at_confirmation: parseFloat(r.price_at_confirmation),
-      }));
-      const finalTotal =
-        items
-          .filter((i) => i.type === 'servicio')
-          .reduce((s, i) => s + i.price_at_confirmation, 0) *
-          (1 - discSvc) +
-        items
-          .filter((i) => i.type === 'producto')
-          .reduce((s, i) => s + i.price_at_confirmation, 0) *
-          (1 - discPrd);
-
-      return {
-        status: 200,
-        data: {
-          id: row.id,
-          created_at: row.created_at,
-          was_existing: true,
-          discount_services: discSvc,
-          discount_products: discPrd,
-          final_total: finalTotal,
-          items,
-        },
-      };
+      const detail = await loadConfirmationDetail(tx, existing.rows[0].id);
+      return { kind: 'existed', confirmation: detail };
     }
 
-    // Reservar cupo (CAS atómico)
+    // Atomic seat reservation (CAS pattern)
     const seat = await reserveSeat(auth.event_id, tx);
     if (!seat.ok) {
-      return {
-        status: 410,
-        data: {
-          id: '',
-          created_at: '',
-          was_existing: false,
-          discount_services: 0,
-          discount_products: 0,
-          final_total: 0,
-          items: [],
-        },
-      };
+      return { kind: 'full' };
     }
 
-    // Cargar items del catálogo para snapshot de precio
-    const catalogResult = await tx.query<{
-      id: string;
-      name: string;
-      type: string;
-      price: string;
-    }>(
+    // Load catalog items for price snapshot
+    const catalogResult = await tx.query<{ id: string; name: string; type: string; price: number }>(
       `SELECT id, name, type, price FROM item WHERE id = ANY($1::uuid[])`,
       [body.item_ids]
     );
@@ -149,12 +156,12 @@ export async function createConfirmation(
       id: r.id,
       name: r.name,
       type: r.type as Item['type'],
-      price: parseFloat(r.price),
+      price: r.price,
     }));
 
     const { serviciosPct, productosPct } = computeDiscount(catalogItems);
 
-    // Actualizar datos opcionales del cliente si se proporcionaron
+    // Update optional client fields if provided
     if (body.phone || body.document_type || body.document_number) {
       await tx.query(
         `UPDATE client
@@ -166,7 +173,7 @@ export async function createConfirmation(
       );
     }
 
-    // INSERT confirmation
+    // Insert confirmation row
     const confResult = await tx.query<{ id: string; created_at: string }>(
       `INSERT INTO confirmation (event_id, client_id, slot_id, email, discount_services, discount_products)
        VALUES ($1, $2, $3, $4, $5, $6)
@@ -175,8 +182,8 @@ export async function createConfirmation(
     );
     const confirmation = confResult.rows[0];
 
-    // INSERT confirmation_item (snapshot de precio en el momento)
-    const insertedItems: ConfirmationResult['items'] = [];
+    // Insert confirmation_item rows (price snapshot at time of confirmation)
+    const insertedItems: ConfirmationItem[] = [];
     for (const item of catalogItems) {
       await tx.query(
         `INSERT INTO confirmation_item (confirmation_id, item_id, price_at_confirmation)
@@ -186,7 +193,7 @@ export async function createConfirmation(
       insertedItems.push({
         item_id: item.id,
         name: item.name,
-        type: item.type,
+        type: item.type as ConfirmationItem['type'],
         price_at_confirmation: item.price,
       });
     }
@@ -210,32 +217,11 @@ export async function createConfirmation(
     };
 
     await tx.query(
-      `INSERT INTO notification_outbox (confirmation_id, payload)
-       VALUES ($1, $2)`,
+      `INSERT INTO notification_outbox (confirmation_id, payload) VALUES ($1, $2)`,
       [confirmation.id, JSON.stringify(payload)]
     );
 
-    const finalTotal =
-      catalogItems
-        .filter((i) => i.type === 'servicio')
-        .reduce((s, i) => s + i.price, 0) *
-        (1 - serviciosPct) +
-      catalogItems
-        .filter((i) => i.type === 'producto')
-        .reduce((s, i) => s + i.price, 0) *
-        (1 - productosPct);
-
-    return {
-      status: 201,
-      data: {
-        id: confirmation.id,
-        created_at: confirmation.created_at,
-        was_existing: false,
-        discount_services: serviciosPct,
-        discount_products: productosPct,
-        final_total: finalTotal,
-        items: insertedItems,
-      },
-    };
+    const detail = await loadConfirmationDetail(tx, confirmation.id);
+    return { kind: 'created', confirmation: detail };
   });
 }

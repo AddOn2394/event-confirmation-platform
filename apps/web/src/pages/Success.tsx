@@ -1,60 +1,18 @@
-import { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
 import { usePageMeta } from '@/hooks/usePageMeta';
-import { ConfirmationDetail, type ConfirmationDetailData } from '@/components/ConfirmationDetail';
-import { apiGet } from '@/lib/api';
-
-interface PageData {
-  client: {
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone: string | null;
-  };
-  existing_confirmation: ConfirmationDetailData;
-}
+import { useExistingConfirmation } from '@/hooks/useExistingConfirmation';
+import { ConfirmationDetail } from '@/components/ConfirmationDetail';
+import { ConfirmationPageSkeleton } from '@/components/ConfirmationPageSkeleton';
 
 export function Success() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const token = searchParams.get('token') ?? '';
-
-  const [data, setData] = useState<PageData | null>(null);
-  const [loading, setLoading] = useState(true);
   usePageMeta('¡Confirmación exitosa!', 'Tu asistencia a la Feria de Promociones 2026 ha sido confirmada.');
 
-  useEffect(() => {
-    if (!token) {
-      navigate('/confirm/invalid', { replace: true });
-      return;
-    }
+  const { data, loading } = useExistingConfirmation(token);
 
-    apiGet<{ client: PageData['client']; existing_confirmation: ConfirmationDetailData | null }>(
-      `/api/event/${token}/confirmation`
-    )
-      .then((res) => {
-        if (!res.existing_confirmation) {
-          navigate('/confirm/invalid', { replace: true });
-          return;
-        }
-        setData({ client: res.client, existing_confirmation: res.existing_confirmation });
-      })
-      .catch(() => navigate('/confirm/invalid', { replace: true }))
-      .finally(() => setLoading(false));
-  }, [token, navigate]);
-
-  if (loading) {
-    return (
-      <div className="mx-auto max-w-lg px-4 py-16 space-y-4">
-        <Skeleton className="h-10 w-48 mx-auto" />
-        <Skeleton className="h-40 rounded-lg" />
-        <Skeleton className="h-40 rounded-lg" />
-      </div>
-    );
-  }
-
+  if (loading) return <ConfirmationPageSkeleton />;
   if (!data) return null;
 
   return (
