@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { ConfirmationDetail, type ConfirmationDetailData } from '@/components/ConfirmationDetail';
 import { apiGet, ApiError } from '@/lib/api';
 
@@ -22,6 +23,7 @@ export function Success() {
 
   const [data, setData] = useState<PageData | null>(null);
   const [loading, setLoading] = useState(true);
+  usePageMeta('¡Confirmación exitosa!', 'Tu asistencia a la Feria de Promociones 2026 ha sido confirmada.');
 
   useEffect(() => {
     if (!token) {

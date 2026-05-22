@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useForm, useWatch, Controller } from 'react-hook-form';
+import { toast } from 'sonner';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Item } from '@ecp/shared';
 import { ConfirmationBodySchema, type ConfirmationBody } from '@ecp/shared';
@@ -8,6 +9,7 @@ import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { ItemSelector } from '@/components/ItemSelector';
 import { DiscountSummary } from '@/components/DiscountSummary';
 import { useDiscount } from '@/hooks/useDiscount';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,6 +62,7 @@ export function ConfirmForm() {
   const [data, setData] = useState<ConfirmationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  usePageMeta('Confirmar asistencia', 'Selecciona tus servicios y productos para confirmar tu asistencia.');
 
   const {
     register,
@@ -128,7 +131,7 @@ export function ConfirmForm() {
         } else if (err.status === 401) {
           navigate('/confirm/invalid', { replace: true });
         } else {
-          alert('Ocurrió un error al procesar tu confirmación. Intenta de nuevo.');
+          toast.error('Ocurrió un error al procesar tu confirmación. Intenta de nuevo.');
         }
       }
     }
@@ -277,7 +280,7 @@ export function ConfirmForm() {
             type="submit"
             size="lg"
             disabled={isSubmitting || itemIds.length === 0}
-            className="min-w-40"
+            className="w-full sm:w-auto sm:min-w-40"
           >
             {isSubmitting ? 'Enviando...' : 'Confirmar asistencia'}
           </Button>
