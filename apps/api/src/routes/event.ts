@@ -56,8 +56,15 @@ router.get('/:token/confirmation', requireMagicLink, async (req, res) => {
       return;
     }
 
-    const existingResult = await pool.query(
-      `SELECT id FROM confirmation WHERE event_id = $1 AND email = $2`,
+    const existingResult = await pool.query<{
+      id: string;
+      created_at: string;
+      discount_services: string;
+      discount_products: string;
+      slot_id: string;
+    }>(
+      `SELECT id, created_at, discount_services, discount_products, slot_id
+         FROM confirmation WHERE event_id = $1 AND email = $2`,
       [auth.event_id, auth.email]
     );
 
@@ -75,14 +82,64 @@ router.get('/:token/confirmation', requireMagicLink, async (req, res) => {
       `SELECT id, name, type, price FROM item ORDER BY type, name`
     );
 
+    let existingConfirmation = null;
+
+    if (existingResult.rowCount && existingResult.rowCount > 0) {
+      const conf = existingResult.rows[0];
+
+      const slotResult = await pool.query<{
+        id: string; label: string; starts_at: string; ends_at: string;
+      }>(
+        `SELECT id, label, starts_at, ends_at FROM event_slot WHERE id = $1`,
+        [conf.slot_id]
+      );
+
+      const itemsConfResult = await pool.query<{
+        item_id: string; name: string; type: string; price_at_confirmation: string;
+      }>(
+        `SELECT ci.item_id, i.name, i.type, ci.price_at_confirmation
+           FROM confirmation_item ci
+           JOIN item i ON i.id = ci.item_id
+          WHERE ci.confirmation_id = $1`,
+        [conf.id]
+      );
+
+      const discSvc = parseFloat(conf.discount_services);
+      const discPrd = parseFloat(conf.discount_products);
+      const items = itemsConfResult.rows.map((r) => ({
+        item_id: r.item_id,
+        name: r.name,
+        type: r.type as 'servicio' | 'producto',
+        price_at_confirmation: parseFloat(r.price_at_confirmation),
+      }));
+
+      const finalTotal =
+        items
+          .filter((i) => i.type === 'servicio')
+          .reduce((s, i) => s + i.price_at_confirmation, 0) *
+          (1 - discSvc) +
+        items
+          .filter((i) => i.type === 'producto')
+          .reduce((s, i) => s + i.price_at_confirmation, 0) *
+          (1 - discPrd);
+
+      existingConfirmation = {
+        id: conf.id,
+        created_at: conf.created_at,
+        slot: slotResult.rows[0] ?? null,
+        items,
+        discount_services: discSvc,
+        discount_products: discPrd,
+        final_total: finalTotal,
+      };
+    }
+
     res.json({
       client: clientResult.rows[0],
       event: eventResult.rows[0] ?? null,
       slots: slotsResult.rows,
       items: itemsResult.rows,
-      existing_confirmation: existingResult.rowCount && existingResult.rowCount > 0
-        ? { id: existingResult.rows[0].id }
-        : null,
+      existing_confirmation: existingConfirmation,
     });
   } catch (err) {
     logger.error('GET /api/event/:token/confirmation error', err);

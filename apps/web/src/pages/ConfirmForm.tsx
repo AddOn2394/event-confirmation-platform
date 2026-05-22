@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Item } from '@ecp/shared';
 import { ConfirmationBodySchema, type ConfirmationBody } from '@ecp/shared';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { ItemSelector } from '@/components/ItemSelector';
+import { DiscountSummary } from '@/components/DiscountSummary';
+import { useDiscount } from '@/hooks/useDiscount';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,6 +59,7 @@ export function ConfirmForm() {
 
   const [data, setData] = useState<ConfirmationData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const {
     register,
@@ -72,6 +75,11 @@ export function ConfirmForm() {
     },
   });
 
+  // Observar item_ids de forma aislada para no re-renderizar todo el form
+  const itemIds = useWatch({ control, name: 'item_ids' }) ?? [];
+  const catalogItems = data?.items ?? [];
+  const discount = useDiscount(itemIds, catalogItems);
+
   useEffect(() => {
     if (!token) {
       navigate('/confirm/invalid', { replace: true });
@@ -81,13 +89,12 @@ export function ConfirmForm() {
     apiGet<ConfirmationData>(`/api/event/${token}/confirmation`)
       .then((res) => {
         if (res.existing_confirmation) {
-          navigate('/confirm/already', { replace: true });
+          navigate(`/confirm/already?token=${token}`, { replace: true });
           return;
         }
 
         setData(res);
 
-        // Pre-llenar campos opcionales del cliente
         if (res.client.phone) setValue('phone', res.client.phone);
         if (res.client.document_type) {
           setValue(
@@ -96,7 +103,6 @@ export function ConfirmForm() {
           );
         }
         if (res.client.document_number) setValue('document_number', res.client.document_number);
-        // Pre-seleccionar primer slot
         if (res.slots.length > 0) setValue('slot_id', res.slots[0].id);
       })
       .catch((err) => {
@@ -111,14 +117,14 @@ export function ConfirmForm() {
 
   async function onSubmit(values: ConfirmationBody) {
     try {
-      const result = await apiPost<{ id: string }>(`/api/confirm?token=${token}`, values);
-      navigate(`/confirm/success?id=${result.id}`, { replace: true });
+      await apiPost<{ id: string }>(`/api/confirm?token=${token}`, values);
+      navigate(`/confirm/success?token=${token}`, { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 410) {
           navigate('/confirm/full', { replace: true });
         } else if (err.status === 409 || err.status === 200) {
-          navigate('/confirm/already', { replace: true });
+          navigate(`/confirm/already?token=${token}`, { replace: true });
         } else if (err.status === 401) {
           navigate('/confirm/invalid', { replace: true });
         } else {
@@ -131,7 +137,7 @@ export function ConfirmForm() {
   if (loading) return <LoadingSkeleton />;
   if (!data) return null;
 
-  const { client, slots, items } = data;
+  const { client, slots } = data;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
@@ -146,7 +152,6 @@ export function ConfirmForm() {
                 <CardTitle className="text-base">Tus datos</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Campos de solo lectura */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Nombre</Label>
@@ -162,7 +167,6 @@ export function ConfirmForm() {
                   <p className="text-sm font-medium">{client.email}</p>
                 </div>
 
-                {/* Campos editables */}
                 <div className="space-y-1.5">
                   <Label htmlFor="phone">Teléfono (opcional)</Label>
                   <Input id="phone" type="tel" placeholder="555-0000" {...register('phone')} />
@@ -236,16 +240,22 @@ export function ConfirmForm() {
             <CardHeader>
               <CardTitle className="text-base">Servicios y Productos</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <Input
+                placeholder="Buscar..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
               <Controller
                 name="item_ids"
                 control={control}
                 render={({ field }) => (
                   <ItemSelector
-                    items={items}
+                    items={catalogItems}
                     value={field.value}
                     onChange={field.onChange}
                     disabled={isSubmitting}
+                    query={searchQuery}
                   />
                 )}
               />
@@ -256,12 +266,17 @@ export function ConfirmForm() {
           </Card>
         </div>
 
+        {/* Resumen de descuentos */}
+        <div className="mt-6">
+          <DiscountSummary {...discount} />
+        </div>
+
         {/* Submit */}
         <div className="mt-6 flex justify-end">
           <Button
             type="submit"
             size="lg"
-            disabled={isSubmitting}
+            disabled={isSubmitting || itemIds.length === 0}
             className="min-w-40"
           >
             {isSubmitting ? 'Enviando...' : 'Confirmar asistencia'}

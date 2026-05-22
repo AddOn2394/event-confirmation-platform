@@ -1,17 +1,21 @@
 import type { Item } from '@ecp/shared';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, formatGTQ } from '@/lib/utils';
 
 interface ItemSelectorProps {
   items: Item[];
   value: string[];
   onChange: (ids: string[]) => void;
   disabled?: boolean;
+  query?: string;
 }
 
-function formatPrice(price: number) {
-  return new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(price);
+function normalize(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '');
 }
 
 function ItemGroup({
@@ -61,7 +65,7 @@ function ItemGroup({
               >
                 <span className="text-sm">{item.name}</span>
                 <span className="ml-4 shrink-0 text-sm font-medium text-muted-foreground">
-                  {formatPrice(item.price)}
+                  {formatGTQ(item.price)}
                 </span>
               </Label>
             </div>
@@ -72,11 +76,19 @@ function ItemGroup({
   );
 }
 
-export function ItemSelector({ items, value, onChange, disabled }: ItemSelectorProps) {
+export function ItemSelector({ items, value, onChange, disabled, query }: ItemSelectorProps) {
   const selected = new Set(value);
+  const q = query ? normalize(query) : '';
 
-  const services = items.filter((i) => i.type === 'servicio');
-  const products = items.filter((i) => i.type === 'producto');
+  // Un item es visible si está seleccionado o coincide con el query
+  function isVisible(item: Item): boolean {
+    if (selected.has(item.id)) return true;
+    if (!q) return true;
+    return normalize(item.name).includes(q);
+  }
+
+  const services = items.filter((i) => i.type === 'servicio' && isVisible(i));
+  const products = items.filter((i) => i.type === 'producto' && isVisible(i));
 
   function toggle(id: string) {
     const next = new Set(selected);
