@@ -92,7 +92,13 @@ export function ConfirmForm() {
         if (res.client.document_number) setValue('document_number', res.client.document_number);
         if (res.slots.length > 0) setValue('slot_id', res.slots[0].id);
       })
-      .catch(() => navigate('/confirm/invalid', { replace: true }))
+      .catch((err) => {
+        if (err instanceof ApiError && (err.status === 401 || err.status === 404)) {
+          navigate('/confirm/invalid', { replace: true });
+        } else {
+          toast.error('Error temporal, intenta de nuevo en unos minutos.');
+        }
+      })
       .finally(() => setLoading(false));
   }, [token, navigate, setValue]);
 

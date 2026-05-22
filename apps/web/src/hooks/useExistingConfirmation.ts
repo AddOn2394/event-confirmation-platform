@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiGet } from '@/lib/api';
+import { toast } from 'sonner';
+import { apiGet, ApiError } from '@/lib/api';
 import type { Client, ConfirmationDetail, ConfirmationPageData } from '@/types/confirmation';
 
 interface RawResponse {
@@ -30,7 +31,13 @@ export function useExistingConfirmation(token: string): {
         }
         setData({ client: res.client, existing_confirmation: res.existing_confirmation });
       })
-      .catch(() => navigate('/confirm/invalid', { replace: true }))
+      .catch((err) => {
+        if (err instanceof ApiError && (err.status === 401 || err.status === 404)) {
+          navigate('/confirm/invalid', { replace: true });
+        } else {
+          toast.error('Error temporal, intenta de nuevo en unos minutos.');
+        }
+      })
       .finally(() => setLoading(false));
   }, [token, navigate]);
 

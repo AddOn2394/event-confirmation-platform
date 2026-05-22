@@ -19,7 +19,7 @@ export async function drainOutbox(): Promise<{ drained: number; failed: number }
   let failed = 0;
 
   try {
-    // Tomar hasta 50 filas pendientes con SKIP LOCKED para no bloquear otras workers
+    // Fetch up to 50 pending rows; SKIP LOCKED prevents blocking concurrent workers
     const result = await client.query<OutboxRow>(
       `SELECT id, confirmation_id, payload, attempts
       FROM notification_outbox

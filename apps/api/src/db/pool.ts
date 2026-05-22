@@ -15,10 +15,7 @@ pool.on('error', (err) => {
   console.error('Unexpected pg pool error:', err);
 });
 
-/**
- * Ejecuta fn dentro de una transacción. Hace COMMIT si fn resuelve, ROLLBACK si lanza.
- * Propaga el error para que el caller lo maneje.
- */
+/** Runs fn inside a transaction. Commits on resolve, rolls back on throw. */
 export async function withTx<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
   try {

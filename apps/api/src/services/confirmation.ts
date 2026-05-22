@@ -1,4 +1,4 @@
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { withTx } from '../db/pool';
 import { computeDiscount } from '@ecp/shared';
 import type { Item } from '@ecp/shared';
@@ -22,11 +22,6 @@ export interface ConfirmationDetail {
   final_total: number;
 }
 
-// Kept for backward-compat with confirm route that uses was_existing flag
-export interface ConfirmationResult extends ConfirmationDetail {
-  was_existing: boolean;
-}
-
 function computeFinalTotal(items: ConfirmationItem[], discountServices: number, discountProducts: number): number {
   const servicesTotal = items
     .filter((i) => i.type === 'servicio')
@@ -38,7 +33,7 @@ function computeFinalTotal(items: ConfirmationItem[], discountServices: number, 
 }
 
 export async function loadConfirmationDetail(
-  executor: PoolClient,
+  executor: Pool | PoolClient,
   confirmationId: string
 ): Promise<ConfirmationDetail> {
   const [confRow, slotRow, itemRows] = await Promise.all([
