@@ -4,8 +4,9 @@ import { env } from '../config/env';
 
 export function requireMagicLink(req: Request, res: Response, next: NextFunction): void {
   const token =
-    (req.query['token'] as string | undefined) ??
-    (req.body as Record<string, unknown>)?.token as string | undefined;
+      (req.query['token'] as string | undefined) ??
+      (req.params['token'] as string | undefined) ??
+      (req.body as Record<string, unknown>)?.token as string | undefined;
 
   if (!token) {
     res.status(401).json({ error: 'invalid_token' });
