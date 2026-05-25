@@ -1,6 +1,5 @@
 import type { Item } from '@ecp/shared';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { cn, formatGTQ } from '@/lib/utils';
 import { partitionByType } from '@/lib/items';
 
@@ -43,9 +42,8 @@ function ItemGroup({
         {items.map((item) => {
           const checked = selected.has(item.id);
           return (
-            <div
+            <label
               key={item.id}
-              onClick={() => !disabled && onToggle(item.id)}
               className={cn(
                 'flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 transition-colors',
                 checked
@@ -60,16 +58,13 @@ function ItemGroup({
                 onCheckedChange={() => !disabled && onToggle(item.id)}
                 disabled={disabled}
               />
-              <Label
-                htmlFor={`item-${item.id}`}
-                className="flex flex-1 cursor-pointer items-center justify-between"
-              >
+              <span className="flex flex-1 cursor-pointer items-center justify-between">
                 <span className="text-sm">{item.name}</span>
                 <span className="ml-4 shrink-0 text-sm font-medium text-muted-foreground">
                   {formatGTQ(item.price)}
                 </span>
-              </Label>
-            </div>
+              </span>
+            </label>
           );
         })}
       </div>

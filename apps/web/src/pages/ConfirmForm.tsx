@@ -229,6 +229,7 @@ export function ConfirmForm() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Input
+                aria-label="Buscar servicios y productos"
                 placeholder="Buscar..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
