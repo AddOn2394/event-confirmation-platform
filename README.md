@@ -20,6 +20,8 @@ Plataforma de confirmación de asistencia para la Feria de Promociones 2026. Per
 
 El `ADMIN_TOKEN` se entrega junto con este documento.
 
+En Windows PowerShell, `curl` es un alias de `Invoke-WebRequest`. Usa `curl.exe` o `Invoke-RestMethod`.
+
 ```bash
 # Generar magic link para cualquier cliente del whitelist
 curl -X POST https://api-production-e1ce.up.railway.app/api/admin/generate-token \
@@ -34,6 +36,14 @@ curl https://api-production-e1ce.up.railway.app/api/admin/outbox?status=enviado 
 # Forzar drain del outbox
 curl -X POST https://api-production-e1ce.up.railway.app/api/admin/outbox/drain \
   -H "X-Admin-Token: <ADMIN_TOKEN>"
+```
+
+```powershell
+# PowerShell (alternativa 1): curl.exe real
+curl.exe -X POST "https://api-production-e1ce.up.railway.app/api/admin/outbox/drain" -H "X-Admin-Token: <ADMIN_TOKEN>"
+
+# PowerShell (alternativa 2): Invoke-RestMethod
+Invoke-RestMethod -Method Post -Uri "https://api-production-e1ce.up.railway.app/api/admin/outbox/drain" -Headers @{ "X-Admin-Token" = "<ADMIN_TOKEN>" }
 ```
 
 ## Levantar localmente

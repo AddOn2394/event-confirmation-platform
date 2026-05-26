@@ -101,9 +101,8 @@ export async function reserveSeat(eventId: string, tx: PoolClient): Promise<Rese
   const result = await tx.query<{ confirmed_count: number; capacity: number }>(
     `UPDATE event
         SET confirmed_count = confirmed_count + 1
-      WHERE id = $1
-        AND confirmed_count < capacity
-      RETURNING confirmed_count, capacity`,
+      WHERE id = $1 AND confirmed_count < capacity
+        RETURNING confirmed_count, capacity`,
     [eventId]
   );
 

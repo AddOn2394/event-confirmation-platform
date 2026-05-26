@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 
 # ─── Stage 1: build frontend ───────────────────────────────────────────────
 FROM node:20-alpine AS web-build
@@ -13,6 +12,7 @@ RUN npm ci --workspace=apps/web --workspace=packages/shared --if-present
 
 COPY packages/shared ./packages/shared
 COPY apps/web ./apps/web
+COPY tsconfig.base.json ./
 RUN npm run build --workspace=apps/web
 
 # ─── Stage 2: build API ─────────────────────────────────────────────────────
